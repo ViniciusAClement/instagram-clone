@@ -11,6 +11,10 @@ import java.util.Optional;
 
 import br.edu.ifpb.instagram.exception.FieldAlreadyExistsException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,16 +24,16 @@ import br.edu.ifpb.instagram.model.dto.UserDto;
 import br.edu.ifpb.instagram.model.entity.UserEntity;
 import br.edu.ifpb.instagram.repository.UserRepository;
 
-@SpringBootTest
+@ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
 
-    @MockitoBean
+    @Mock
     private UserRepository userRepository;
 
-    @Autowired
+    @InjectMocks
     private UserServiceImpl userService;
 
-    @MockitoBean
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Test
@@ -39,18 +43,17 @@ class UserServiceImplTest {
         when(userRepository.existsByEmail(usuario.email())).thenReturn(false);
         when(userRepository.existsByUsername(usuario.username())).thenReturn(false);
         when(passwordEncoder.encode(usuario.password())).thenReturn("senhacriptografada");
-        UserEntity savedUser = new UserEntity();
-        savedUser.setId(1L);
-        savedUser.setFullName(usuario.fullName());
-        savedUser.setUsername(usuario.username());
-        savedUser.setEmail(usuario.email());
-        when(userRepository.save(any(UserEntity.class))).thenReturn(savedUser);
+
+        when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> {UserEntity entity = invocation.getArgument(0);entity.setId(1L);return entity;});
+
         UserDto result = userService.createUser(usuario);
+
         assertNotNull(result);
         assertEquals(1L, result.id());
         assertEquals("João vitor", result.fullName());
         assertEquals("João Missão", result.username());
         assertEquals("Joaomissão@gmail.com", result.email());
+
         verify(userRepository).existsByEmail(usuario.email());
         verify(userRepository).existsByUsername(usuario.username());
         verify(passwordEncoder).encode(usuario.password());
@@ -153,21 +156,27 @@ class UserServiceImplTest {
 
 
     @Test
-    void achePeloIdQUandoHouver() {
+    void buscaDeUsuarioPorIdQuandoExiste() {
         Long id = 1L;
-        UserEntity userEntity = new UserEntity();
-        userEntity.setId(id);
-        userEntity.setFullName("Paulo Pereira");
-        userEntity.setUsername("paulo");
-        userEntity.setEmail("paulo@ppereira.dev");
-        when(userRepository.findById(id)).thenReturn(Optional.of(userEntity));
+
+        UserEntity userNoBd = new UserEntity();
+        userNoBd.setId(id);
+        userNoBd.setFullName("João Vitor");
+        userNoBd.setUsername("João Missão");
+        userNoBd.setEmail("Joaomissão@gmail.com");
+
+        when(userRepository.findById(id)).thenReturn(Optional.of(userNoBd));
+
         UserDto result = userService.findById(id);
+
         assertNotNull(result);
         assertEquals(id, result.id());
-        assertEquals("Paulo Pereira", result.fullName());
-        assertEquals("paulo@ppereira.dev", result.email());
-        verify(userRepository, times(1)).findById(id);
+        assertEquals("João Vitor", result.fullName());
+        assertEquals("Joaomissão@gmail.com", result.email());
+
+        verify(userRepository).findById(id);
     }
+
 
     @Test
     void achePeloIdQunadonaoHouver() {
